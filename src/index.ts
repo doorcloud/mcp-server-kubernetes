@@ -107,6 +107,7 @@ import {
 } from "./tools/describe_service.js";
 import { updateService, updateServiceSchema } from "./tools/update_service.js";
 import { deleteService, deleteServiceSchema } from "./tools/delete_service.js";
+import { getManagerFromRequest } from "./lib/k8s.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
@@ -183,13 +184,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   // Filter out destructive tools if ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS is set to 'true'
   const tools = nonDestructiveTools
     ? allTools.filter(
-        (tool) => !destructiveTools.some((dt) => dt.name === tool.name)
-      )
+      (tool) => !destructiveTools.some((dt) => dt.name === tool.name)
+    )
     : allTools;
 
   return { tools };
 });
 
+// Handle tool calls
 server.setRequestHandler(
   CallToolRequestSchema,
   async (request: {
@@ -197,7 +199,11 @@ server.setRequestHandler(
     method: string;
   }) => {
     try {
-      const { name, arguments: input = {} } = request.params;
+      const { name, arguments: input = {}, _meta } = request.params;
+      const meta = _meta;
+
+      // Create a manager from the request headers if available
+      const k8sManager = meta?.req ? getManagerFromRequest(meta.req) : new KubernetesManager();
 
       switch (name) {
         case "cleanup": {
@@ -575,7 +581,7 @@ server.setRequestHandler(
         }
 
         case "get_configmap": {
-          return  await getConfigMap(
+          return await getConfigMap(
             k8sManager,
             input as {
               name: string;

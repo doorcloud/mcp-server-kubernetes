@@ -10,9 +10,16 @@ export class KubernetesManager {
   private k8sAppsApi: k8s.AppsV1Api;
   private k8sBatchApi: k8s.BatchV1Api;
 
-  constructor() {
-    this.kc = new k8s.KubeConfig();
-    this.kc.loadFromDefault();
+  constructor(kubeConfig?: k8s.KubeConfig) {
+    if (kubeConfig) {
+      // Use the provided KubeConfig (from headers)
+      this.kc = kubeConfig;
+    } else {
+      // Fall back to default KubeConfig file
+      this.kc = new k8s.KubeConfig();
+      this.kc.loadFromDefault();
+    }
+
     this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
     this.k8sAppsApi = this.kc.makeApiClient(k8s.AppsV1Api);
     this.k8sBatchApi = this.kc.makeApiClient(k8s.BatchV1Api);
@@ -24,8 +31,6 @@ export class KubernetesManager {
    * @param contextName 
    */
   public setCurrentContext(contextName: string) {
-
-
     // Get all available contexts
     const contexts = this.kc.getContexts();
     const contextNames = contexts.map(context => context.name);
